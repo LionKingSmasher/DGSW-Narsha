@@ -1,0 +1,7 @@
+PC2: X-STOP
+PC3: Y-STOP
+PC5: X-DIR(规氢, 0=>开规氢, 1=>沥规氢)
+PC6: Y-STEP
+PC7: Y-DIR
+PD6: XYEENABLE
+PD7: X-STEP(弥家 200ms)
