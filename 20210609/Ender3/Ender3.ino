@@ -1,4 +1,5 @@
 #include "gcode_sample_480.h"
+#include "gcode_sample_200_string.h"
 
 #define X_DIR  21
 #define X_STEP 15
@@ -9,6 +10,7 @@
 #define Y_STEP 22
 
 #define XY_EN  14
+#define NUM_GCODE 204
 
 enum {
 	STOPPED = 0,
@@ -105,6 +107,7 @@ void motor_x_start(float distance, int step_period, char left_right){
 	count_distance_x = (int)(distance * 80);
 	half_period_x = step_period;
 	OCR1A = half_period_x * 2;
+	TCNT1 = 0;
 	motor_direction(left_right);
 }
 
@@ -113,6 +116,7 @@ void motor_y_start(float distance, int step_period, char up_down){
 	count_distance_y = (int)(distance * 80);
 	half_period_y = step_period;
 	OCR3A = half_period_y * 2;
+	TCNT3 = 0;
 	motor_direction(up_down);
 }
 
@@ -131,6 +135,74 @@ void motor_init(){
 	motor_y_start(25, 200 * 1.732, UP);
 	motor_x_y_enable(ENABLE, ENABLE);
 	state = 1;
+}
+
+double prev_x = 0;
+double prev_y = 0;
+int prev_speed = 0;
+
+void motor_move_1(double x, double y, int speed){
+	char dir_x;
+	char dir_y;
+
+	char move_enable_x;
+	char move_enable_y;
+
+	double x_dist = x - prev_x;
+	double y_dist = y - prev_y;
+
+	// Serial.println("start_x: " + String(start_x));
+	// Serial.println("end_x: " + String(end_x));
+
+	//------------------------------------
+	if(x_dist > 0) dir_x = RIGHT;
+	else if(x_dist < 0) dir_x = LEFT;
+
+	if(y_dist > 0) dir_y = UP;
+	else if(y_dist < 0) dir_y = DOWN;
+	//------------------------------------
+	if(x_dist == 0) move_enable_x = DISABLE;
+	else move_enable_x = ENABLE;
+
+	if(y_dist == 0) move_enable_y = DISABLE;
+	else move_enable_y = ENABLE;
+	//------------------------------------
+	
+	int period_x = 200;
+	int period_y = 200;
+
+	if(speed == 0) speed = prev_speed;
+	double half_period = (1000000 / (((double)speed / 60.0)*80.0))/2;
+	// Serial.println(half_period);
+
+	double theta = atan2(y_dist, x_dist);
+	// Serial.println(theta);
+
+	if(y_dist != 0 && x_dist != 0)
+		period_y = (int)(200.0 * (x_dist/y_dist));
+
+	period_x = abs(period_x);
+	period_y = abs(period_y);
+
+	x_dist = abs(x_dist);
+	y_dist = abs(y_dist);
+
+	if(x_dist != 0)
+	{
+		period_x = half_period * (1/cos(theta));
+		motor_x_start((float)x_dist, abs(period_x), dir_x);
+	}
+	if(y_dist != 0)
+	{
+		period_y = half_period * (1/sin(theta));
+		motor_y_start((float)y_dist, abs(period_y), dir_y);
+	}
+
+	motor_x_y_enable(move_enable_x, move_enable_y);
+	prev_speed = speed;
+	// Serial.println("x_dist: " + String(x_dist));
+	// Serial.println("y_dist: " + String(y_dist));
+	// while(enable_motor_x==ENABLE || enable_motor_y==ENABLE);
 }
 
 void motor_move(double start_x, double start_y, double end_x, double end_y, int speed){
@@ -163,11 +235,11 @@ void motor_move(double start_x, double start_y, double end_x, double end_y, int 
 	int period_x = 200;
 	int period_y = 200;
 
-	double cross_speed = (1000000 / (((double)speed / 60.0)*80))/2;
-	Serial.println(half_period);
+	double half_period = (1000000 / (((double)speed / 60.0)*80.0))/2;
+	// Serial.println(half_period);
 
 	double theta = atan2(y_dist, x_dist);
-	Serial.println(theta);
+	// Serial.println(theta);
 
 	if(y_dist != 0 && x_dist != 0)
 		period_y = (int)(200.0 * (x_dist/y_dist));
@@ -179,14 +251,97 @@ void motor_move(double start_x, double start_y, double end_x, double end_y, int 
 	y_dist = abs(y_dist);
 
 	if(x_dist != 0)
-		motor_x_start((float)x_dist, period_x, dir_x);
+	{
+		period_x = half_period * (1/cos(theta));
+		motor_x_start((float)x_dist, abs(period_x), dir_x);
+	}
 	if(y_dist != 0)
-		motor_y_start((float)y_dist, period_y, dir_y);
+	{
+		period_y = half_period * (1/sin(theta));
+		motor_y_start((float)y_dist, abs(period_y), dir_y);
+	}
 
 	motor_x_y_enable(move_enable_x, move_enable_y);
 	// Serial.println("x_dist: " + String(x_dist));
 	// Serial.println("y_dist: " + String(y_dist));
 	// while(enable_motor_x==ENABLE || enable_motor_y==ENABLE);
+}
+
+char x_value_string[10];
+char y_value_string[10];
+char e_value_string[10];
+char f_value_string[10];
+int x_value_index = 0;
+int y_value_index = 0;
+int e_value_index = 0;
+int f_value_index = 0;
+
+double xy_value[NUM_GCODE][2];
+double f_value[NUM_GCODE];
+int e_value[NUM_GCODE];
+
+enum {
+	X_BUFFFER = 0,
+	Y_BUFFER,
+	E_BUFFER,
+	F_BUFFER
+};
+
+char xyef_string[4][10];
+int buffer_index = 0;
+
+char which_buffer = 0;
+double xyef_value[NUM_GCODE][4];
+
+char initial_value[4] = {'X', 'Y', 'E', 'F'};
+
+void gcode_parsing()
+{
+	for(int j = 0; j < NUM_GCODE; j++)
+	{
+		int one_code_length = strlen(xy_pos_string[j]);
+		buffer_index = 0;
+
+		for(int k = 0; k < 4; k++){
+			for(int i = 0; i < 10; i++){
+				xyef_string[k][i] = 0;
+			}
+		}
+		for(int i = 0; i < 10; i++)
+		{
+			x_value_string[i] = 0;
+			y_value_string[i] = 0;
+			e_value_string[i] = 0;
+			f_value_string[i] = 0;
+		}
+		if(*(xy_pos_string[j]+0)=='G' && *(xy_pos_string[j]+1)=='1')
+		{
+			for(int i = 2; i < one_code_length; i++)
+			{
+				for(int m = 0; m < 4; m++){
+					if(*(xy_pos_string[j] + i) == initial_value[m]){
+						which_buffer = m;
+						buffer_index = 0;
+						break;
+					}
+				}
+				if(*(xy_pos_string[j]+i) != ' ')
+					xyef_string[which_buffer][buffer_index++] = *(xy_pos_string[j]+i);
+			}
+			for(int i = 0; i < 4; i++){
+				xyef_value[j][i] = atof(&xyef_string[i][1]);
+			}
+			// xy_value[j][0] = atof(&x_value_string[1]);
+			// xy_value[j][1] = atof(&y_value_string[1]);
+			// f_value[j] = atoi(&f_value_string[1]);
+			// if(f_value[j] == 0){
+		 //      f_value[j] = f_value[j-1];
+		 //    }
+		}
+	    // Serial.println(xy_value[j][0]);
+	    // Serial.println(xy_value[j][1]);
+	    // Serial.println(f_value[j]);
+	}
 }
 
 void setup()
@@ -243,6 +398,7 @@ void setup()
 	// motor_move(0, 0, 50, 30);
 	// Serial.println("second done");
 	// motor_x_y_enable(ENABLE, ENABLE);
+	gcode_parsing();
 	state = 0;
 }
 
@@ -304,6 +460,7 @@ double gcode_array[4][2] = {
 };
 
 int pre_state = 0;
+int gcode_index = 0;
 
 void loop()
 {
@@ -320,13 +477,9 @@ void loop()
 		}
 		if(interrupt_stopped_x == STOPPED && interrupt_stopped_y == STOPPED)
 		{
-			motor_move(xy_pos[pre_state][0], xy_pos[pre_state][1], 
-						xy_pos[state][0], xy_pos[state][1], 1125);
-			pre_state = state;
-			state++;
-			if(state == 480)
-				state = 0;
-			Serial.println(state);
+			motor_move_1(xyef_value[gcode_index][0], xyef_value[gcode_index][1], xyef_value[gcode_index][3]);
+			if(gcode_index++ == NUM_GCODE) while(1);
+			Serial.println(String(gcode_index));
 		}
 	}
 
