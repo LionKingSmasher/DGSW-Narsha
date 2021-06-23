@@ -1,5 +1,6 @@
 #include "gcode_sample_480.h"
-#include "gcode_sample_200_string.h"
+//#include "gcode_sample_200_string.h
+#include "gcode_sample_300_string.h"
 
 #define X_DIR  21
 #define X_STEP 15
@@ -10,7 +11,7 @@
 #define Y_STEP 22
 
 #define XY_EN  14
-#define NUM_GCODE 204
+#define NUM_GCODE 278
 
 enum {
 	STOPPED = 0,
@@ -199,6 +200,8 @@ void motor_move_1(double x, double y, int speed){
 	}
 
 	motor_x_y_enable(move_enable_x, move_enable_y);
+	prev_x = x;
+	prev_y = y;
 	prev_speed = speed;
 	// Serial.println("x_dist: " + String(x_dist));
 	// Serial.println("y_dist: " + String(y_dist));
@@ -479,7 +482,7 @@ void loop()
 		{
 			motor_move_1(xyef_value[gcode_index][0], xyef_value[gcode_index][1], xyef_value[gcode_index][3]);
 			if(gcode_index++ == NUM_GCODE) while(1);
-			Serial.println(String(gcode_index));
+			// Serial.println(String(gcode_index));
 		}
 	}
 
