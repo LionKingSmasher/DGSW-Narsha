@@ -11,7 +11,7 @@
 #define Y_STEP 22
 
 #define XY_EN  14
-#define NUM_GCODE 100
+#define NUM_GCODE 600
 
 #define BUFFER_LEN  1024
 #define GCODE_BUF_LEN  100
@@ -55,8 +55,6 @@ char interrupt_stopped_x = 0;
 char interrupt_stopped_y = 0;
 
 int state = 1;
-
-int count = 0;
 
 //================================================================
 
@@ -292,67 +290,67 @@ void motor_move_1(double x, double y, int speed){
 	// while(enable_motor_x==ENABLE || enable_motor_y==ENABLE);
 }
 
-// void motor_move(double start_x, double start_y, double end_x, double end_y, int speed){
-// 	char dir_x;
-// 	char dir_y;
+void motor_move(double start_x, double start_y, double end_x, double end_y, int speed){
+	char dir_x;
+	char dir_y;
 
-// 	char move_enable_x;
-// 	char move_enable_y;
+	char move_enable_x;
+	char move_enable_y;
 
-// 	double x_dist = end_x - start_x;
-// 	double y_dist = end_y - start_y;
+	double x_dist = end_x - start_x;
+	double y_dist = end_y - start_y;
 
-// 	// Serial.println("start_x: " + String(start_x));
-// 	// Serial.println("end_x: " + String(end_x));
+	// Serial.println("start_x: " + String(start_x));
+	// Serial.println("end_x: " + String(end_x));
 
-// 	//------------------------------------
-// 	if(x_dist > 0) dir_x = RIGHT;
-// 	else if(x_dist < 0) dir_x = LEFT;
+	//------------------------------------
+	if(x_dist > 0) dir_x = RIGHT;
+	else if(x_dist < 0) dir_x = LEFT;
 
-// 	if(y_dist > 0) dir_y = UP;
-// 	else if(y_dist < 0) dir_y = DOWN;
-// 	//------------------------------------
-// 	if(x_dist == 0) move_enable_x = DISABLE;
-// 	else move_enable_x = ENABLE;
+	if(y_dist > 0) dir_y = UP;
+	else if(y_dist < 0) dir_y = DOWN;
+	//------------------------------------
+	if(x_dist == 0) move_enable_x = DISABLE;
+	else move_enable_x = ENABLE;
 
-// 	if(y_dist == 0) move_enable_y = DISABLE;
-// 	else move_enable_y = ENABLE;
-// 	//------------------------------------
+	if(y_dist == 0) move_enable_y = DISABLE;
+	else move_enable_y = ENABLE;
+	//------------------------------------
 	
-// 	int period_x = 200;
-// 	int period_y = 200;
+	int period_x = 200;
+	int period_y = 200;
 
-// 	double half_period = (1000000 / (((double)speed / 60.0)*80.0))/2;
-// 	// Serial.println(half_period);
+	double half_period = (1000000 / (((double)speed / 60.0)*80.0))/2;
+	// Serial.println(half_period);
 
-// 	double theta = atan2(y_dist, x_dist);
-// 	// Serial.println(theta);
+	double theta = atan2(y_dist, x_dist);
+	// Serial.println(theta);
 
-// 	if(y_dist != 0 && x_dist != 0)
-// 		period_y = (int)(200.0 * (x_dist/y_dist));
+	if(y_dist != 0 && x_dist != 0)
+		period_y = (int)(200.0 * (x_dist/y_dist));
 
-// 	period_x = abs(period_x);
-// 	period_y = abs(period_y);
+	period_x = abs(period_x);
+	period_y = abs(period_y);
 
-// 	x_dist = abs(x_dist);
-// 	y_dist = abs(y_dist);
+	x_dist = abs(x_dist);
+	y_dist = abs(y_dist);
 
-// 	if(x_dist != 0)
-// 	{
-// 		period_x = half_period * (1/cos(theta));
-// 		motor_x_start((float)x_dist, abs(period_x), dir_x);
-// 	}
-// 	if(y_dist != 0)
-// 	{
-// 		period_y = half_period * (1/sin(theta));
-// 		motor_y_start((float)y_dist, abs(period_y), dir_y);
-// 	}
+	if(x_dist != 0)
+	{
+		period_x = half_period * (1/cos(theta));
+		motor_x_start((float)x_dist, abs(period_x), dir_x);
+	}
+	if(y_dist != 0)
+	{
+		period_y = half_period * (1/sin(theta));
+		motor_y_start((float)y_dist, abs(period_y), dir_y);
+	}
 
-// 	motor_x_y_enable(move_enable_x, move_enable_y);
-// 	// Serial.println("x_dist: " + String(x_dist));
-// 	// Serial.println("y_dist: " + String(y_dist));
-// 	// while(enable_motor_x==ENABLE || enable_motor_y==ENABLE);
-// }
+	motor_x_y_enable(move_enable_x, move_enable_y);
+	// Serial.println("x_dist: " + String(x_dist));
+	// Serial.println("y_dist: " + String(y_dist));
+	// while(enable_motor_x==ENABLE || enable_motor_y==ENABLE);
+}
 
 char x_value_string[10];
 char y_value_string[10];
@@ -378,10 +376,7 @@ char xyef_string[4][10];
 int buffer_index = 0;
 
 char which_buffer = 0;
-
-double xyef_value[4][NUM_GCODE][4];
-int xyef_value_index = 0;
-int xyef_value_index_motor = 0;
+double xyef_value[NUM_GCODE][4];
 
 char initial_value[4] = {'X', 'Y', 'E', 'F'};
 
@@ -421,29 +416,21 @@ void gcode_parsing_one_string(char* gcode_string)
 				xyef_string[which_buffer][buffer_index++] = *(gcode_string+i);
 		}
 		for(int i = 0; i < 4; i++){
-			xyef_value[xyef_value_index][gcode_parsing_index][i] = atof(&xyef_string[i][1]);
+			xyef_value[gcode_parsing_index][i] = atof(&xyef_string[i][1]);
 		}
 		//=========================================
 		// int tmp_index = gcode_parsing_index - 1;
 		// if(gcode_parsing_index < 0)
 		// 	gcode_parsing_index = 0;
-		Serial.print("[" + String(xyef_value_index) + "][" + String(gcode_parsing_index) + "]: ");
-		for(int i = 0; i < 4; i++){
-			Serial.print(xyef_value[xyef_value_index][gcode_parsing_index][i]);
-    		Serial.print(" ");
-		}
-		Serial.println("");
+		// Serial.print("[" + String(gcode_parsing_index) + "]: ");
+		// for(int i = 0; i < 4; i++){
+		// 	Serial.print(xyef_value[gcode_parsing_index][i]);
+  //   		Serial.print(" ");
+		// }
+		// Serial.println("");
 		//=========================================
 		gcode_parsing_index++;
-		if(gcode_parsing_index == NUM_GCODE) {
-			xyef_value_index++;
-			if(xyef_value_index == 4){ 
-				// xyef_value_index=0;
-				parsing_done = 1;
-			}
-			else
-				gcode_parsing_index = 0;
-		}
+		if(gcode_parsing_index == NUM_GCODE) parsing_done = 1;
 	}
 
 	// if(interrupt_stopped_x == STOPPED){
@@ -668,10 +655,10 @@ void loop()
       can_use_buff_func();
       if(can_use_buff > 0){
       	// Serial.println("can_use_buff = " + String(can_use_buff));
-        // Serial.print("Tail[" + String(gcode_buf_tail) + "]: ");
-        // Serial.println(gcode_buf[gcode_buf_tail]);
       	if(parsing_done == 0)
       		gcode_parsing_one_string(gcode_buf[gcode_buf_tail]);
+        // Serial.print("Tail[" + String(gcode_buf_tail) + "]: ");
+        // Serial.println(gcode_buf[gcode_buf_tail]);
 
         buffer_clear();
 
@@ -703,23 +690,10 @@ void loop()
 	{
 		if(gcode_index < gcode_parsing_index && gcode_parsing_index > 0){
 			// Serial.println("gcode_index = " + String(gcode_index));
-			// Serial.println("gcode_parsing_index = " + String(gcode_parsing_index));
-			if(xyef_value[xyef_value_index_motor][gcode_index][0] && xyef_value[xyef_value_index_motor][gcode_index][1])
-				motor_move_1(xyef_value[xyef_value_index_motor][gcode_index][0], xyef_value[xyef_value_index_motor][gcode_index][1], xyef_value[xyef_value_index_motor][gcode_index][3]);
-			if(++gcode_index == NUM_GCODE){
-				for(int i = 0; i < 3; i++){
-				}
-				gcode_index = 0;
-			// //	Serial.println(xyef_value_index_motor);
-			// 	if(xyef_value_index_motor == 3) {
-			// 		while(1);
-			// 	}
-			// 	gcode_index = 0;
-			// 	xyef_value_index_motor++;
-			// 	Serial.println("gcode_index = " + String(gcode_index));
-			// 	Serial.println("gcode_parsing_index = " + String(gcode_parsing_index));
-			// 	Serial.println("xyef_value_index_motor = " + String(xyef_value_index_motor));
-			}
+			if(xyef_value[gcode_index][0] && xyef_value[gcode_index][1])
+				motor_move_1(xyef_value[gcode_index][0], xyef_value[gcode_index][1], xyef_value[gcode_index][3]);
+			if(gcode_index++ == NUM_GCODE) while(1);
 		}
+		// Serial.println(String(gcode_index));
 	}
 }

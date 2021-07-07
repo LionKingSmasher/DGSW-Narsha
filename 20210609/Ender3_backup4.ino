@@ -704,21 +704,18 @@ void loop()
 		if(gcode_index < gcode_parsing_index && gcode_parsing_index > 0){
 			// Serial.println("gcode_index = " + String(gcode_index));
 			// Serial.println("gcode_parsing_index = " + String(gcode_parsing_index));
+			Serial.println("gcode_index = " + String(gcode_index));
+			Serial.println("gcode_parsing_index = " + String(gcode_parsing_index));
+			Serial.println("xyef_value_index_motor = " + String(xyef_value_index_motor));
 			if(xyef_value[xyef_value_index_motor][gcode_index][0] && xyef_value[xyef_value_index_motor][gcode_index][1])
 				motor_move_1(xyef_value[xyef_value_index_motor][gcode_index][0], xyef_value[xyef_value_index_motor][gcode_index][1], xyef_value[xyef_value_index_motor][gcode_index][3]);
 			if(++gcode_index == NUM_GCODE){
-				for(int i = 0; i < 3; i++){
+			//	Serial.println(xyef_value_index_motor);
+				if(xyef_value_index_motor == 3) {
+					while(1);
 				}
 				gcode_index = 0;
-			// //	Serial.println(xyef_value_index_motor);
-			// 	if(xyef_value_index_motor == 3) {
-			// 		while(1);
-			// 	}
-			// 	gcode_index = 0;
-			// 	xyef_value_index_motor++;
-			// 	Serial.println("gcode_index = " + String(gcode_index));
-			// 	Serial.println("gcode_parsing_index = " + String(gcode_parsing_index));
-			// 	Serial.println("xyef_value_index_motor = " + String(xyef_value_index_motor));
+				xyef_value_index_motor++;
 			}
 		}
 	}
